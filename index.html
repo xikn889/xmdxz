@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle, #0c1a27 0%, #09131e 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+            padding: 20px;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(100, 180, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(100, 221, 23, 0.1) 0%, transparent 40%);
+            z-index: -1;
+        }
+        
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1400&q=80') no-repeat center center/cover;
+            opacity: 0.1;
+            z-index: -2;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+            padding: 20px;
+            animation: fadeIn 1.2s ease-out;
+        }
+        
+        header {
+            margin-bottom: 30px;
+            animation: slideDown 1s ease-out;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #64b5f6, #2196f3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(100, 180, 255, 0.5);
+        }
+        
+        .logo i {
+            font-size: 2.5rem;
+            color: white;
+        }
+        
+        h1 {
+            font-size: 3.2rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(0, 200, 255, 0.7);
+            letter-spacing: 3px;
+            background: linear-gradient(to right, #a0d2eb, #64b5f6, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            color: #a0d2eb;
+            margin-bottom: 5px;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+        
+        .target-time {
+            font-size: 1.1rem;
+            color: #64b5f6;
+            margin-top: 15px;
+            background: rgba(0, 40, 80, 0.4);
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(100, 180, 255, 0.3);
+        }
+        
+        .countdown-container {
+            background: rgba(0, 30, 60, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 15px;
+            padding: 35px 25px;
+            margin-bottom: 35px;
+            box-shadow: 
+                0 15px 35px rgba(0, 0, 0, 0.5),
+                inset 0 0 20px rgba(100, 180, 255, 0.2);
+            border: 1px solid rgba(100, 180, 255, 0.25);
+            animation: scaleIn 1s ease-out;
+        }
+        
+        #countdown {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            font-size: 3.8rem;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+        }
+        
+        .countdown-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 25px;
+            background: rgba(10, 40, 80, 0.7);
+            border-radius: 15px;
+            min-width: 120px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+        
+        .countdown-unit:hover {
+            transform: translateY(-5px);
+            background: rgba(10, 60, 120, 0.8);
+        }
+        
+        .countdown-label {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            color: #80c0ff;
+            font-weight: 300;
+        }
+        
+        .media-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.5),
+                0 0 0 2px rgba(100, 180, 255, 0.15);
+            margin-bottom: 20px;
+            background: #000;
+        }
+        
+        #initial-image, #video1, #video2 {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.8s ease;
+        }
+        
+        #center-play {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        #center-play.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        #center-play-btn {
+            background: rgba(100, 180, 255, 0.35);
+            color: white;
+            border: 2px solid rgba(100, 180, 255, 0.7);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 30px rgba(0, 100, 255, 0.9);
+        }
+        
+        #center-play-btn i {
+            font-size: 2.5rem;
+            margin-left: 5px;
+        }
+        
+        #center-play-btn:hover {
+            background: rgba(100, 180, 255, 0.5);
+            transform: scale(1.1);
+            box-shadow: 0 0 40px rgba(0, 150, 255, 1);
+        }
+        
+        .video-controls {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px 0;
+            margin-bottom: 30px;
+        }
+        
+        .video-controls .btn {
+            background: rgba(100, 180, 255, 0.25);
+            color: white;
+            border: 2px solid rgba(100, 180, 255, 0.5);
+            border-radius: 50px;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            outline: none;
+        }
+        
+        .video-controls .btn:hover {
+            background: rgba(100, 180, 255, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 100, 255, 0.4);
+        }
+        
+        .video-controls .btn i {
+            font-size: 1.2rem;
+        }
+        
+        .music-controls {
+            margin-bottom: 20px;
+        }
+        
+        .music-btn {
+            background: rgba(100, 180, 255, 0.25);
+            color: white;
+            border: 2px solid rgba(100, 180, 255, 0.5);
+            border-radius: 50px;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            outline: none;
+            margin: 0 auto;
+        }
+        
+        .music-btn:hover {
+            background: rgba(100, 180, 255, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 100, 255, 0.4);
+        }
+        
+        .status-container {
+            background: rgba(0, 20, 40, 0.5);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            border: 1px solid rgba(100, 180, 255, 0.2);
+        }
+        
+        .status {
+            color: #64dd17;
+            font-weight: 500;
+            font-size: 1.1rem;
+            text-shadow: 0 0 8px rgba(100, 221, 23, 0.5);
+        }
+        
+        .custom-info {
+            margin-top: 40px;
+            background: rgba(0, 20, 40, 0.5);
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 700px;
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            margin: 0 auto;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideDown {
+            from { 
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes scaleIn {
+            from { 
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @media (max-width: 900px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            #countdown {
+                font-size: 3rem;
+                gap: 15px;
+            }
+            
+            .countdown-unit {
+                min-width: 90px;
+                padding: 12px 18px;
+            }
+            
+            .media-container {
+                height: 400px;
+            }
+            
+            .video-controls .btn {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            #countdown {
+                font-size: 2rem;
+                flex-wrap: wrap;
+            }
+            
+            .countdown-unit {
+                min-width: 70px;
+                padding: 10px 12px;
+                font-size: 2.5rem;
+            }
+            
+            .countdown-label {
+                font-size: 0.8rem;
+            }
+            
+            .media-container {
+                height: 300px;
+            }
+            
+            .video-controls {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .video-controls .btn {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+            
+            #center-play-btn {
+                width: 60px;
+                height: 60px;
+            }
+            
+            #center-play-btn i {
+                font-size: 1.8rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #countdown {
+                font-size: 1.6rem;
+                gap: 5px;
+            }
+            
+            .countdown-unit {
+                min-width: 60px;
+                padding: 8px 10px;
+                font-size: 1.8rem;
+            }
+            
+            .media-container {
+                height: 250px;
+            }
+        }
+        
+        :fullscreen .media-container {
+            border-radius: 0;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        :fullscreen .video-controls {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>视频播放倒计时</h1>
+            <p class="subtitle">距离揭晓精彩内容还有</p>
+            <div class="target-time">北京时间：2025年8月16日 20:00</div>
+        </header>
+        
+           <script src="https://www.sakuraidc.cc/JS/snowfall-no-click.js"></script>
+
+        <div class="countdown-container">
+            <div id="countdown">
+                <div class="countdown-unit">
+                    <span id="days">00</span>
+                    <span class="countdown-label">天</span>
+                </div>
+                <div class="countdown-unit">
+                    <span id="hours">00</span>
+                    <span class="countdown-label">小时</span>
+                </div>
+                <div class="countdown-unit">
+                    <span id="minutes">00</span>
+                    <span class="countdown-label">分钟</span>
+                </div>
+                <div class="countdown-unit">
+                    <span id="seconds">00</span>
+                    <span class="countdown-label">秒</span>
+                </div>
+            </div>
+        </div>
+        
+       <div class="media-container">
+    <img id="initial-image" src="https://img.koxiuqiu.cc/imgse/68/20250814/46116d20a0485940a199d29dfee392c8.png" alt="倒计时背景">
+    <video id="video1" preload="auto" loop>
+        <!-- 修改路径为 video/ygp.mp4 -->
+        <source src="video/ygp.mp4" type="video/mp4">
+        您的浏览器不支持视频播放
+    </video>
+    <video id="video2" preload="auto" loop>
+        <!-- 修改路径为 video/xmdxz.mp4 -->
+        <source src="video/xmdxz.mp4" type="video/mp4">
+        您的浏览器不支持视频播放
+    </video>
+    <div id="center-play">
+        <button id="center-play-btn" class="btn">
+            <i class="fas fa-play"></i>
+        </button>
+    </div>
+</div>
+        
+        <div class="video-controls">
+            <button id="video-play-toggle" class="btn">
+                <i class="fas fa-play"></i> <span>播放</span>
+            </button>
+            <button id="video-mute-toggle" class="btn">
+                <i class="fas fa-volume-up"></i> <span>静音</span>
+            </button>
+            <button id="video-fullscreen" class="btn">
+                <i class="fas fa-expand"></i> <span>全屏</span>
+            </button>
+        </div>
+        
+        <div class="music-controls">
+            <button id="music-toggle" class="music-btn">
+                <i class="fas fa-music"></i> <span id="music-text">背景音乐: 播放中</span>
+            </button>
+        </div>
+        
+        <div class="status-container">
+            <div class="status" id="status">当前状态：等待倒计时...</div>
+        </div>
+        
+        <div class="custom-info">
+            <h2>《小明的选择》基本信息</h2>
+            <p>🎬 导演：刘成凤 </p>
+            <p>🎬 策划：莫小雪</p>
+            <p>🎬 领衔主演：鲁庚鑫  苏晨晨  胡洪来  米跃齐</p>
+            <p>🎬 参演：沈琮翔 莫小雪 许 钦 王俊辉 胡桔涵 郝源 陈冠明</p>
+            <p>🎬 剪辑：刘成凤 宋世杰</p>
+            <p>🎬 后期制作：宋世杰</p>
+            <p>🎬 拍摄：刘成凤</p>
+            <p>🎬 道具：刘成凤</p>
+            <p>🎬 场地：莫小雪</p>
+        </div>
+         <div class="custom-info">
+            <h2>公示</h2>
+            <h2>鸣谢</h2>
+            <p>汐科信息工作室</p>
+            <p>deepseek</p>
+            <h2>鸣骂</h2>
+            <p>deepseek(提供了许多的错误代码)</p>
+            <P>豆包（乱写）</P>
+            <p>knim(不做评价)</p>
+        </div>
+    </div>
+    
+         <div>
+              <p>汐科信息工作室</p>
+         </div>
+
+    <audio id="background-music" loop>
+        <source src="wake.mp3" type="audio/mp3">
+        您的浏览器不支持音频播放
+    </audio>
+    
+    <script>
+        // 目标时间：2025年8月14日20:20（北京时间）
+        const targetTime = new Date('2025-08-16T20:00:00+08:00').getTime();
+        
+        // DOM元素获取
+        const daysEl = document.getElementById('days');
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+        const statusEl = document.getElementById('status');
+        const musicText = document.getElementById('music-text');
+        
+        const initialImage = document.getElementById('initial-image');
+        const video1 = document.getElementById('video1');
+        const video2 = document.getElementById('video2');
+        const centerPlay = document.getElementById('center-play');
+        const centerPlayBtn = document.getElementById('center-play-btn');
+        
+        const musicToggle = document.getElementById('music-toggle');
+        const bgMusic = document.getElementById('background-music');
+        
+        const videoPlayToggle = document.getElementById('video-play-toggle');
+        const videoMuteToggle = document.getElementById('video-mute-toggle');
+        const videoFullscreen = document.getElementById('video-fullscreen');
+        
+        // 状态变量
+        let isMusicPlaying = true;
+        let countdownInterval;
+        let video1Played = false;
+        let video2Played = false;
+        let currentVideo = null;
+        
+        // 初始化视频设置
+        video1.loop = true;
+        video2.loop = true;
+        video1.style.display = 'none';
+        video2.style.display = 'none';
+        
+        // 更新状态提示
+        function updateStatus(message) {
+            statusEl.textContent = `当前状态：${message}`;
+            statusEl.style.animation = 'none';
+            setTimeout(() => {
+                statusEl.style.animation = 'fadeIn 0.8s';
+            }, 10);
+        }
+        
+        // 播放视频（处理自动播放限制）
+        function playVideo(videoElement) {
+            const playPromise = videoElement.play();
+            if (playPromise) {
+                playPromise.catch(() => {
+                    centerPlay.classList.add('show');
+                    updateStatus('视频自动播放失败，请点击中央按钮播放');
+                });
+            }
+        }
+        
+        // 绑定视频事件（核心优化）
+        function bindVideoEvents(video) {
+            // 移除旧事件监听（避免重复）
+            video.removeEventListener('play', handleVideoPlay);
+            video.removeEventListener('pause', handleVideoPause);
+            
+            // 添加新事件监听
+            video.addEventListener('play', handleVideoPlay);
+            video.addEventListener('pause', handleVideoPause);
+            
+            // 初始状态同步
+            video.paused ? handleVideoPause() : handleVideoPlay();
+        }
+        
+        // 视频播放事件处理
+        function handleVideoPlay() {
+            centerPlay.classList.remove('show');
+            videoPlayToggle.innerHTML = '<i class="fas fa-pause"></i> <span>暂停</span>';
+        }
+        
+        // 视频暂停事件处理
+        function handleVideoPause() {
+            centerPlay.classList.add('show');
+            videoPlayToggle.innerHTML = '<i class="fas fa-play"></i> <span>播放</span>';
+        }
+        
+        // 切换到视频1（倒计时30分钟内）
+        function switchToVideo1() {
+            if (video1Played) return;
+            
+            initialImage.style.display = 'none';
+            video1.style.display = 'block';
+            currentVideo = video1;
+            
+            playVideo(video1); // 尝试自动播放
+            bindVideoEvents(video1); // 绑定事件
+            
+            video1Played = true;
+            updateStatus('倒计时进入最后30分钟，正在播放预告');
+            
+            // 暂停背景音乐
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                musicText.textContent = '背景音乐: 已暂停';
+                isMusicPlaying = false;
+            }
+        }
+        
+        // 切换到视频2（倒计时结束）- 修复声音残留问题
+        function switchToVideo2() {
+            if (video2Played) return;
+            
+            // 关键修复：停止视频1的播放
+            video1.pause();
+            video1.currentTime = 0;
+            initialImage.style.display = 'none';
+            video1.style.display = 'none';
+            
+            video2.style.display = 'block';
+            currentVideo = video2;
+            
+            playVideo(video2); // 尝试自动播放
+            bindVideoEvents(video2); // 绑定事件
+            
+            video2Played = true;
+            updateStatus('倒计时结束，正在播放主视频');
+        }
+        
+        // 更新倒计时
+        function updateCountdown() {
+            const now = Date.now();
+            const timeRemaining = targetTime - now;
+            
+            // 倒计时结束
+            if (timeRemaining <= 0) {
+                clearInterval(countdownInterval);
+                switchToVideo2();
+                daysEl.textContent = '00';
+                hoursEl.textContent = '00';
+                minutesEl.textContent = '00';
+                secondsEl.textContent = '00';
+                return;
+            }
+            
+            // 计算时间差
+            const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+            
+            // 更新显示
+            daysEl.textContent = String(days).padStart(2, '0');
+            hoursEl.textContent = String(hours).padStart(2, '0');
+            minutesEl.textContent = String(minutes).padStart(2, '0');
+            secondsEl.textContent = String(seconds).padStart(2, '0');
+            
+            // 30分钟内切换视频1
+            if (timeRemaining <= 30 * 60 * 1000 && !video1Played) {
+                switchToVideo1();
+            }
+        }
+        
+        // 初始化页面
+        function init() {
+            // 启动倒计时
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+            
+            // 背景音乐处理
+            bgMusic.volume = 0.5;
+            const musicPlayPromise = bgMusic.play();
+            if (musicPlayPromise) {
+                musicPlayPromise.catch(() => {
+                    musicText.textContent = '背景音乐: 点击播放';
+                    isMusicPlaying = false;
+                });
+            }
+            
+            // 事件绑定
+            // 音乐切换
+            musicToggle.addEventListener('click', () => {
+                if (isMusicPlaying) {
+                    bgMusic.pause();
+                    musicText.textContent = '背景音乐: 已暂停';
+                } else {
+                    bgMusic.play().catch(() => updateStatus('背景音乐播放失败'));
+                    musicText.textContent = '背景音乐: 播放中';
+                }
+                isMusicPlaying = !isMusicPlaying;
+            });
+            
+            // 视频播放/暂停
+            videoPlayToggle.addEventListener('click', () => {
+                if (!currentVideo) return;
+                
+                if (currentVideo.paused) {
+                    currentVideo.play();
+                } else {
+                    currentVideo.pause();
+                }
+            });
+            
+            // 视频静音切换
+            videoMuteToggle.addEventListener('click', () => {
+                if (!currentVideo) return;
+                
+                currentVideo.muted = !currentVideo.muted;
+                videoMuteToggle.innerHTML = currentVideo.muted 
+                    ? '<i class="fas fa-volume-mute"></i> <span>取消静音</span>' 
+                    : '<i class="fas fa-volume-up"></i> <span>静音</span>';
+            });
+            
+            // 全屏切换
+            videoFullscreen.addEventListener('click', () => {
+                const mediaContainer = document.querySelector('.media-container');
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    mediaContainer.requestFullscreen().catch(() => updateStatus('全屏切换失败'));
+                }
+            });
+            
+            // 中央播放按钮
+            centerPlayBtn.addEventListener('click', () => {
+                if (!currentVideo) return;
+                
+                currentVideo.play();
+                centerPlay.classList.remove('show');
+                videoPlayToggle.innerHTML = '<i class="fas fa-pause"></i> <span>暂停</span>';
+                updateStatus('视频正在播放');
+            });
+            
+            // 全屏状态变化监听
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    videoFullscreen.innerHTML = '<i class="fas fa-compress"></i> <span>退出全屏</span>';
+                } else {
+                    videoFullscreen.innerHTML = '<i class="fas fa-expand"></i> <span>全屏</span>';
+                }
+            });
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
